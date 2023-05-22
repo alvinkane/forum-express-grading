@@ -75,12 +75,18 @@ const restaurantController = {
     const { id } = req.params
     try {
       // 找出對應restaurant
-      let restaurant = await Restaurant.findByPk(id, { include: [Category, Comment] })
+      const restaurant = await Restaurant.findByPk(id, {
+        include: [Category, Comment, { model: User, as: 'FavoritedUsers' }]
+      })
       // 沒有就報錯
       if (!restaurant) throw new Error('Restaurant does not exist!')
-      // 有就render
-      restaurant = restaurant.toJSON()
-      return res.render('dashboard', { restaurant })
+      // 有就render、// 計算收藏數
+      const result = {
+        ...restaurant.toJSON(),
+        favoritedCount: restaurant.FavoritedUsers.length
+      }
+
+      return res.render('dashboard', { restaurant: result })
     } catch (err) {
       next(err)
     }
