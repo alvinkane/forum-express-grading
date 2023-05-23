@@ -14,7 +14,7 @@ module.exports = {
         tel: faker.phone.number('##-########'),
         address: faker.address.streetAddress(true),
         opening_hours: dayjs(faker.datatype.datetime()).format('HH:mm'),
-        image: `https://loremflickr.com/320/240/restaurant,food/?random=${Math.random() * 100}`,
+        image: `https://loremflickr.com/320/240/restaurant,food/?lock=${Math.random() * 100}`,
         description: faker.lorem.text(),
         created_at: new Date(),
         updated_at: new Date(),
