@@ -53,13 +53,42 @@ const userController = {
     const signInUserId = req.user?.id || id
     try {
       // 找對應user
-      const user = await User.findByPk(id, { include: { model: Comment, include: Restaurant }, order: [[{ model: Comment }, 'createdAt', 'DESC']] })
+      const user = await User.findByPk(id, {
+        include: [
+          { model: Comment, include: Restaurant },
+          { model: Restaurant, as: 'FavoritedRestaurants' },
+          { model: User, as: 'Followings' },
+          { model: User, as: 'Followers' }
+        ],
+        order: [[{ model: Comment }, 'createdAt', 'DESC']]
+      })
       // 沒有就報錯
       if (!user) throw new Error('User did not exist!')
       // 判斷瀏覽的使用者是否為本人
       const selfUser = signInUserId === Number(id) ? 1 : 0
+      // 過濾掉評論中的同個餐廳
+      const userCommentsUnique = user.Comments.filter((c, i, arr) => {
+        return (
+          i ===
+          arr.findIndex(c2 => {
+            return c.Restaurant.id === c2.Restaurant.id
+          })
+        )
+      }).map(c => ({
+        ...c.toJSON()
+      }))
+
+      // 更新評論餐廳、收藏餐廳數、跟隨者數量、追蹤者數量
+      const result = {
+        ...user.toJSON(),
+        Comments: userCommentsUnique,
+        favoritedCount: user.FavoritedRestaurants.length,
+        followingsCount: user.Followings.length,
+        followersCount: user.Followers.length
+      }
+      console.log(result.Comments[0].Restaurant)
       // 有就render
-      return res.render('users/profile', { user: user.toJSON(), selfUser })
+      return res.render('users/profile', { user: result, selfUser })
     } catch (err) {
       next(err)
     }
@@ -74,7 +103,7 @@ const userController = {
       // 沒有就報錯
       if (!user) throw new Error('User did not exist!')
       // 如果user跟登入的user不同就報錯
-      if (id !== userId) throw new Error('Cannot modify other user profile!')
+      if (user.id !== userId) throw new Error('Cannot modify other user profile!')
       // 有就render
       return res.render('users/edit', { user })
     } catch (err) {
@@ -198,7 +227,9 @@ const userController = {
   getTopUsers: async (req, res, next) => {
     try {
       // 取得User資料包含followers
-      const users = await User.findAll({ include: { model: User, as: 'Followers' } })
+      const users = await User.findAll({
+        include: { model: User, as: 'Followers' }
+      })
       // 陣列加入follower數量及是否被當前user followed
       // 依follower數量排序
       const result = users
